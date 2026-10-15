@@ -38,6 +38,16 @@ entity telecran is
 end entity telecran;
 
 architecture rtl of telecran is
+
+	component encodeur
+		port (
+			A : in std_logic;
+			B : in std_logic;
+			CLK : in std_logic;
+			rst : in std_logic;
+			val : out std_logic
+			);
+		end component;
 	component I2C_HDMI_Config 
 		port (
 			iCLK : in std_logic;
