@@ -21,3 +21,13 @@ Résultat RLT :
 
 <img width="1447" height="363" alt="image" src="https://github.com/user-attachments/assets/0fb6ad81-8443-407d-a82b-59bcbd9cd0a9" />
 
+
+
+TP - Télécran
+Noé Moisdon
+
+Question 2 : 
+Afin de détecter un front montant ( ou descendant ), nous allons utiliser des bascules D. Pour cela nous en plaçons deux à la suite. Puis nous prenons deux signaux, un qui correspond à l’état actuel (t), le signal A_ACT, et un autre qui correspond à l’état précédent ( t-1), le signal A_PREC. Ensuite, pour détecter les fronts montant il suffira de remarquer que le signal A_PREC vaut 1 alors que le signal A_ACT vaut 0. Et inversement pour le front descendant.
+
+
+
