@@ -40,11 +40,13 @@ begin
                 BCRT  <= B;
                 BPREV <= BCRT;
         
-				if ((ACRT = '1' and APREV = '0' and BCRT = '0' and BPREV = '0') or ACRT = '0' and APREV = '1' and BCRT = '1' and BPREV = '1')) then
+			if ((ACRT = '1' and APREV = '0' and BCRT = '0' and BPREV = '0') or 
+                    (ACRT = '0' and APREV = '1' and BCRT = '1' and BPREV = '1')) then
                     COMPTEUR <= COMPTEUR + 1;
             
-				elsif ((ACRT = '0' and APREV = '0' and BCRT = '1' and BPREV = '0') or (ACRT = '1' and APREV = '1' and BCRT = '0' and BPREV = '1')) then                    
-							  COMPTEUR <= COMPTEUR - 1;
+			elsif ((ACRT = '0' and APREV = '0' and BCRT = '1' and BPREV = '0') or 
+                       (ACRT = '1' and APREV = '1' and BCRT = '0' and BPREV = '1')) then                     
+                    COMPTEUR <= COMPTEUR - 1;
                 end if;
             end if;
         end if;
