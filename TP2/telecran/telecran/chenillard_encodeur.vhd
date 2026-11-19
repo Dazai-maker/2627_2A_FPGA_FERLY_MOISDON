@@ -31,7 +31,7 @@ architecture rtl of Chenillard_Encodeur is
 
     signal s_val      : std_logic_vector(9 downto 0);
     signal s_val_prev : unsigned(9 downto 0);
-    signal s_chen     : unsigned(9 downto 0);
+    signal s_led_idx  : integer range 0 to 9;
 
 begin
 
@@ -53,22 +53,24 @@ begin
     begin
         if rst = '0' then
             s_val_prev <= (others => '0');
-            s_chen     <= "0000000001"; -- Démarre sur LED(0)
-
+            s_led_idx  <= 0;
         elsif rising_edge(CLK) then
             if ena = '1' then
                 v_cur := unsigned(s_val);
 
                 if v_cur /= s_val_prev then
-                    -- Incrément (y compris passage 1023 -> 0) : rotation à gauche d'1 bit
-                    if (v_cur = s_val_prev + 1) or
-                       ((s_val_prev = to_unsigned(1023, 10)) and (v_cur = 0)) then
-                        s_chen <= s_chen rol 1;
-
-                    -- Décrément (y compris passage 0 -> 1023) : rotation à droite d'1 bit
-                    elsif (v_cur = s_val_prev - 1) or
-                          ((s_val_prev = 0) and (v_cur = to_unsigned(1023, 10))) then
-                        s_chen <= s_chen ror 1;
+                    if (v_cur = s_val_prev + 1) or ((s_val_prev = to_unsigned(1023, 10)) and (v_cur = 0)) then
+                        if s_led_idx = 9 then
+                            s_led_idx <= 0;
+                        else
+                            s_led_idx <= s_led_idx + 1;
+                        end if;
+                    elsif (v_cur = s_val_prev - 1) or ((s_val_prev = 0) and (v_cur = to_unsigned(1023, 10))) then
+                        if s_led_idx = 0 then
+                            s_led_idx <= 9;
+                        else
+                            s_led_idx <= s_led_idx - 1;
+                        end if;
                     end if;
 
                     s_val_prev <= v_cur;
@@ -77,6 +79,14 @@ begin
         end if;
     end process;
 
-    LEDS <= std_logic_vector(s_chen);
+    process(s_led_idx, rst)
+        variable v_leds : std_logic_vector(9 downto 0);
+    begin
+        v_leds := (others => '0');
+        if rst = '1' then
+            v_leds(s_led_idx) := '1';
+        end if;
+        LEDS <= v_leds;
+    end process;
 
 end architecture rtl;
