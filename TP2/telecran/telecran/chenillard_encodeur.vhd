@@ -59,7 +59,6 @@ begin
                 v_cur := unsigned(s_val);
 
                 if v_cur /= s_val_prev then
-                    -- Détection incrément ou décrément (y compris passage 0 <-> 1023)
                     if (v_cur = s_val_prev + 1) or ((s_val_prev = to_unsigned(1023, 10)) and (v_cur = 0)) then
                         if s_led_idx = 9 then
                             s_led_idx <= 0;
