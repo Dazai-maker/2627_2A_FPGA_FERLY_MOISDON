@@ -10,7 +10,7 @@ entity telecran is
         -- FPGA
         i_clk_50: in std_logic;
 
-        -- HDMI
+        -- hdmi
         io_hdmi_i2c_scl        : inout std_logic;
         io_hdmi_i2c_sda        : inout std_logic;
         o_hdmi_tx_clk          : out std_logic;
@@ -39,7 +39,7 @@ end entity telecran;
 
 architecture rtl of telecran is
 
-    -- Correction de la largeur de 'val' (10 bits)
+    
     component encodeur
         port (
             A   : in std_logic;
@@ -99,7 +99,7 @@ architecture rtl of telecran is
     signal s_clk_27 : std_logic;
     signal s_rst_n  : std_logic;
 
-    -- Compteurs x et y issus du contrôleur HDMI
+    -- Compteurs x et y issus du contrôleur hdmi
     signal s_x_counter : natural range 0 to (h_res - 1);
     signal s_y_counter : natural range 0 to (v_res - 1);
 
@@ -124,7 +124,7 @@ begin
             locked => s_rst_n
         );
 
-    -- Configuration I2C HDMI
+    -- Config hdmi i2c
     I2C_HDMI_Config0 : component I2C_HDMI_Config 
         port map (
             iCLK => i_clk_50,
@@ -191,13 +191,14 @@ begin
         end if;
     end process;
 
-    -- Affichage du pixel unique (Blanc si correspondance, Noir sinon)[cite: 2]
+    -- Affichage du pixel unique 
     process(s_x_counter, s_y_counter, s_pos_x, s_pos_y)
+	 constant  ¨P_SIZE : integer := 16; -- Taille du pixel
     begin
         if (s_x_counter = s_pos_x) and (s_y_counter = s_pos_y) then
-            o_hdmi_tx_d <= x"FFFFFF"; -- Blanc[cite: 2]
+            o_hdmi_tx_d <= x"FFFFFF"; -- blanc
         else
-            o_hdmi_tx_d <= x"000000"; -- Noir[cite: 2]
+            o_hdmi_tx_d <= x"000000"; -- noir
         end if;
     end process;
 
