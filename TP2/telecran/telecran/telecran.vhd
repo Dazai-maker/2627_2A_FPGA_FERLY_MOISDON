@@ -154,23 +154,23 @@ begin
             o_y_counter     => s_y_counter
         );
 
-    -- Encodeur gauche (horizontal)
     enc_left : component encodeur
         port map (
             A   => i_left_ch_a,
             B   => i_left_ch_b,
             CLK => s_clk_27,
             rst => s_rst_n,
+            ena => '1',
             val => s_enc_left_val
         );
 
-    -- Encodeur droit (vertical)
     enc_right : component encodeur
         port map (
             A   => i_right_ch_a,
             B   => i_right_ch_b,
             CLK => s_clk_27,
             rst => s_rst_n,
+            ena => '1',
             val => s_enc_right_val
         );
 
