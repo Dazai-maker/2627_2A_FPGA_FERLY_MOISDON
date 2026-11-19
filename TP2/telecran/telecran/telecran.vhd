@@ -8,39 +8,38 @@ use pll.all;
 entity telecran is
     port (
         -- FPGA
-        i_clk_50: in std_logic;
+        i_clk_50 : in std_logic;
 
-        -- hdmi
-        io_hdmi_i2c_scl        : inout std_logic;
-        io_hdmi_i2c_sda        : inout std_logic;
-        o_hdmi_tx_clk          : out std_logic;
-        o_hdmi_tx_d            : out std_logic_vector(23 downto 0);
-        o_hdmi_tx_de           : out std_logic;
-        o_hdmi_tx_hs           : out std_logic;
-        i_hdmi_tx_int          : in std_logic;
-        o_hdmi_tx_vs           : out std_logic;
+        -- HDMI
+        io_hdmi_i2c_scl : inout std_logic;
+        io_hdmi_i2c_sda : inout std_logic;
+        o_hdmi_tx_clk   : out std_logic;
+        o_hdmi_tx_d     : out std_logic_vector(23 downto 0);
+        o_hdmi_tx_de    : out std_logic;
+        o_hdmi_tx_hs    : out std_logic;
+        i_hdmi_tx_int   : in std_logic;
+        o_hdmi_tx_vs    : out std_logic;
 
         -- KEYs
         i_rst_n : in std_logic;
-        
+
         -- LEDs
-        o_leds : out std_logic_vector(9 downto 0);
+        o_leds      : out std_logic_vector(9 downto 0);
         o_de10_leds : out std_logic_vector(7 downto 0);
 
         -- Coder
-        i_left_ch_a : in std_logic;
-        i_left_ch_b : in std_logic;
-        i_left_pb : in std_logic;
+        i_left_ch_a  : in std_logic;
+        i_left_ch_b  : in std_logic;
+        i_left_pb    : in std_logic;
         i_right_ch_a : in std_logic;
         i_right_ch_b : in std_logic;
-        i_right_pb : in std_logic
+        i_right_pb   : in std_logic
     );
 end entity telecran;
 
 architecture rtl of telecran is
 
-    
-component encodeur
+    component encodeur
         generic (
             N : integer := 10
         );
@@ -54,35 +53,35 @@ component encodeur
         );
     end component;
 
-    component I2C_HDMI_Config 
+    component I2C_HDMI_Config
         port (
-            iCLK : in std_logic;
-            iRST_N : in std_logic;
-            I2C_SCLK : out std_logic;
-            I2C_SDAT : inout std_logic;
-            HDMI_TX_INT  : in std_logic
+            iCLK        : in std_logic;
+            iRST_N      : in std_logic;
+            I2C_SCLK    : out std_logic;
+            I2C_SDAT    : inout std_logic;
+            HDMI_TX_INT : in std_logic
         );
-     end component;
-     
-    component pll 
+    end component;
+
+    component pll
         port (
-            refclk : in std_logic;
-            rst : in std_logic;
+            refclk   : in std_logic;
+            rst      : in std_logic;
             outclk_0 : out std_logic;
-            locked : out std_logic
+            locked   : out std_logic
         );
     end component;
 
     component hdmi_controler
         generic (
-            h_res     : positive := 720;
-            v_res     : positive := 480;
-            h_sync    : positive := 61;
-            h_fp      : positive := 58;
-            h_bp      : positive := 18;
-            v_sync    : positive := 5;
-            v_fp      : positive := 30;
-            v_bp      : positive := 9
+            h_res  : positive := 720;
+            v_res  : positive := 480;
+            h_sync : positive := 61;
+            h_fp   : positive := 58;
+            h_bp   : positive := 18;
+            v_sync : positive := 5;
+            v_fp   : positive := 30;
+            v_bp   : positive := 9
         );
         port (
             i_clk           : in std_logic;
@@ -97,13 +96,15 @@ component encodeur
         );
     end component;
 
-    constant h_res : natural := 720;
-    constant v_res : natural := 480;
+    constant h_res  : natural := 720;
+    constant v_res  : natural := 480;
+    constant C_SIZE : integer := 16; -- Taille du carré en pixels
+    constant C_STEP : integer := 2;  -- Pas de déplacement par cran d'encodeur
 
     signal s_clk_27 : std_logic;
     signal s_rst_n  : std_logic;
 
-    -- Compteurs x et y issus du contrôleur hdmi
+    -- Compteurs x et y issus du contrôleur HDMI
     signal s_x_counter : natural range 0 to (h_res - 1);
     signal s_y_counter : natural range 0 to (v_res - 1);
 
@@ -111,30 +112,30 @@ component encodeur
     signal s_enc_left_val  : std_logic_vector(9 downto 0);
     signal s_enc_right_val : std_logic_vector(9 downto 0);
 
-    -- Positions x et y pilotées par les encodeurs
-    signal s_pos_x     : natural range 0 to (h_res - 1) := h_res / 2;
-    signal s_pos_y     : natural range 0 to (v_res - 1) := v_res / 2;
+    -- Positions x et y du carré à l'écran
+    signal s_pos_x : natural range 0 to (h_res - 1) := (h_res / 2) - (C_SIZE / 2);
+    signal s_pos_y : natural range 0 to (v_res - 1) := (v_res / 2) - (C_SIZE / 2);
 
 begin
-    o_leds <= (others => '0');
+    o_leds      <= s_enc_left_val;
     o_de10_leds <= (others => '0');
-    
+
     -- PLL 27 MHz
-    pll0 : component pll 
+    pll0 : component pll
         port map (
-            refclk => i_clk_50,
-            rst => not(i_rst_n),
+            refclk   => i_clk_50,
+            rst      => not(i_rst_n),
             outclk_0 => s_clk_27,
-            locked => s_rst_n
+            locked   => s_rst_n
         );
 
-    -- Config hdmi i2c
-    I2C_HDMI_Config0 : component I2C_HDMI_Config 
+    -- Configuration I2C HDMI
+    I2C_HDMI_Config0 : component I2C_HDMI_Config
         port map (
-            iCLK => i_clk_50,
-            iRST_N => i_rst_n,
-            I2C_SCLK => io_hdmi_i2c_scl,
-            I2C_SDAT => io_hdmi_i2c_sda,
+            iCLK        => i_clk_50,
+            iRST_N      => i_rst_n,
+            I2C_SCLK    => io_hdmi_i2c_scl,
+            I2C_SDAT    => io_hdmi_i2c_sda,
             HDMI_TX_INT => i_hdmi_tx_int
         );
 
@@ -154,7 +155,11 @@ begin
             o_y_counter     => s_y_counter
         );
 
+    -- Encodeur gauche (horizontal)
     enc_left : component encodeur
+        generic map (
+            N => 10
+        )
         port map (
             A   => i_left_ch_a,
             B   => i_left_ch_b,
@@ -164,7 +169,11 @@ begin
             val => s_enc_left_val
         );
 
+    -- Encodeur droit (vertical)
     enc_right : component encodeur
+        generic map (
+            N => 10
+        )
         port map (
             A   => i_right_ch_a,
             B   => i_right_ch_b,
@@ -174,36 +183,55 @@ begin
             val => s_enc_right_val
         );
 
-    -- Conversion des valeurs des encodeurs en positions (avec limitation aux dimensions de l'écran)
+    -- Mise à jour de la position (s_pos_x, s_pos_y) à partir des encodeurs
     process(s_clk_27, s_rst_n)
-        variable v_x, v_y : integer;
+        variable v_raw_x, v_raw_y   : integer;
+        variable v_calc_x, v_calc_y : integer;
     begin
         if (s_rst_n = '0') then
-            s_pos_x <= h_res / 2;
-            s_pos_y <= v_res / 2;
+            s_pos_x <= (h_res / 2) - (C_SIZE / 2);
+            s_pos_y <= (v_res / 2) - (C_SIZE / 2);
         elsif rising_edge(s_clk_27) then
-            v_x := to_integer(unsigned(s_enc_left_val));
-            v_y := to_integer(unsigned(s_enc_right_val));
+            v_raw_x := to_integer(unsigned(s_enc_left_val));
+            v_raw_y := to_integer(unsigned(s_enc_right_val));
 
-            if v_x < h_res then
-                s_pos_x <= v_x;
+            if v_raw_x >= 512 then
+                v_raw_x := v_raw_x - 1024;
             end if;
 
-            if v_y < v_res then
-                s_pos_y <= v_y;
+            if v_raw_y >= 512 then
+                v_raw_y := v_raw_y - 1024;
+            end if;
+
+            v_calc_x := ((h_res / 2) - (C_SIZE / 2)) + (v_raw_x * C_STEP);
+            v_calc_y := ((v_res / 2) - (C_SIZE / 2)) + (v_raw_y * C_STEP);
+
+            if v_calc_x < 0 then
+                s_pos_x <= 0;
+            elsif v_calc_x > integer(h_res) - C_SIZE then
+                s_pos_x <= integer(h_res) - C_SIZE;
+            else
+                s_pos_x <= v_calc_x;
+            end if;
+
+            if v_calc_y < 0 then
+                s_pos_y <= 0;
+            elsif v_calc_y > integer(v_res) - C_SIZE then
+                s_pos_y <= integer(v_res) - C_SIZE;
+            else
+                s_pos_y <= v_calc_y;
             end if;
         end if;
     end process;
 
--- Affichage d'un carré de 16x16 pixels (test)
+    -- Assignation directe des pixels (sans synchronisation ni masquage DE)
     process(s_x_counter, s_y_counter, s_pos_x, s_pos_y)
-        constant P_SIZE : integer := 16; -- Taille pixel
     begin
-        if (s_x_counter >= s_pos_x) and (s_x_counter < s_pos_x + P_SIZE) and
-           (s_y_counter >= s_pos_y) and (s_y_counter < s_pos_y + P_SIZE) then
-            o_hdmi_tx_d <= x"FFFFFF"; -- blanc
+        if (s_x_counter >= s_pos_x) and (s_x_counter < s_pos_x + C_SIZE) and
+           (s_y_counter >= s_pos_y) and (s_y_counter < s_pos_y + C_SIZE) then
+            o_hdmi_tx_d <= x"FFFFFF"; -- Blanc[cite: 2]
         else
-            o_hdmi_tx_d <= x"000000"; -- noir
+            o_hdmi_tx_d <= x"000000"; -- Noir
         end if;
     end process;
 
