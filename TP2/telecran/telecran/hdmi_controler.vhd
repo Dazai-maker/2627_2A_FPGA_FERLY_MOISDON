@@ -122,9 +122,8 @@ begin
         end if;
     end process;
 
-    -- Assignations des sorties
+	-- Assignations des sorties
     o_hdmi_de       <= r_h_active and r_v_active;
-    o_pixel_en      := r_h_active and r_v_active; -- Note : ou <= selon la syntaxe, corrigé en assignation standard ci-dessous
     o_pixel_en      <= r_h_active and r_v_active;
     o_x_counter     <= r_x_counter;
     o_y_counter     <= r_y_counter;

@@ -39,14 +39,15 @@ end entity telecran;
 
 architecture rtl of telecran is
 
+    -- Correction de la largeur de 'val' (10 bits)
     component encodeur
         port (
-            A : in std_logic;
-            B : in std_logic;
+            A   : in std_logic;
+            B   : in std_logic;
             CLK : in std_logic;
             rst : in std_logic;
-            val : out std_logic
-            );
+            val : out std_logic_vector(9 downto 0)
+        );
     end component;
 
     component I2C_HDMI_Config 
@@ -96,17 +97,25 @@ architecture rtl of telecran is
     constant v_res : natural := 480;
 
     signal s_clk_27 : std_logic;
-    signal s_rst_n  : std_logic;    -- Maintient le reset actif tant que la PLL n'est pas verrouillée
+    signal s_rst_n  : std_logic;
 
     -- Compteurs x et y issus du contrôleur HDMI
     signal s_x_counter : natural range 0 to (h_res - 1);
     signal s_y_counter : natural range 0 to (v_res - 1);
 
+    -- Signaux de sortie des encodeurs sur 10 bits
+    signal s_enc_left_val  : std_logic_vector(9 downto 0);
+    signal s_enc_right_val : std_logic_vector(9 downto 0);
+
+    -- Positions x et y pilotées par les encodeurs
+    signal s_pos_x     : natural range 0 to (h_res - 1) := h_res / 2;
+    signal s_pos_y     : natural range 0 to (v_res - 1) := v_res / 2;
+
 begin
     o_leds <= (others => '0');
     o_de10_leds <= (others => '0');
     
-    -- La fréquence pour le HDMI est de 27 MHz générée par cette PLL
+    -- PLL 27 MHz
     pll0 : component pll 
         port map (
             refclk => i_clk_50,
@@ -115,7 +124,7 @@ begin
             locked => s_rst_n
         );
 
-    -- Configure l'ADV7513 pour le format 480p
+    -- Configuration I2C HDMI
     I2C_HDMI_Config0 : component I2C_HDMI_Config 
         port map (
             iCLK => i_clk_50,
@@ -123,12 +132,11 @@ begin
             I2C_SCLK => io_hdmi_i2c_scl,
             I2C_SDAT => io_hdmi_i2c_sda,
             HDMI_TX_INT => i_hdmi_tx_int
-     );
+        );
 
-    -- Horloge de transmission HDMI connectée à la sortie de la PLL (27 MHz)
     o_hdmi_tx_clk <= s_clk_27;
 
-    -- Instanciation du contrôleur HDMI
+    -- Contrôleur HDMI
     hdmi_controler0 : component hdmi_controler
         port map (
             i_clk           => s_clk_27,
@@ -142,9 +150,55 @@ begin
             o_y_counter     => s_y_counter
         );
 
-    -- Connexion des compteurs x et y aux pixels de sortie (affichage de dégradés/tests)[cite: 1]
-    o_hdmi_tx_d(23 downto 16) <= std_logic_vector(to_unsigned(s_x_counter, 8));
-    o_hdmi_tx_d(15 downto 8)  <= std_logic_vector(to_unsigned(s_y_counter, 8));
-    o_hdmi_tx_d(7 downto 0)   <= (others => '0');
+    -- Encodeur gauche (horizontal)
+    enc_left : component encodeur
+        port map (
+            A   => i_left_ch_a,
+            B   => i_left_ch_b,
+            CLK => s_clk_27,
+            rst => s_rst_n,
+            val => s_enc_left_val
+        );
+
+    -- Encodeur droit (vertical)
+    enc_right : component encodeur
+        port map (
+            A   => i_right_ch_a,
+            B   => i_right_ch_b,
+            CLK => s_clk_27,
+            rst => s_rst_n,
+            val => s_enc_right_val
+        );
+
+    -- Conversion des valeurs des encodeurs en positions (avec limitation aux dimensions de l'écran)
+    process(s_clk_27, s_rst_n)
+        variable v_x, v_y : integer;
+    begin
+        if (s_rst_n = '0') then
+            s_pos_x <= h_res / 2;
+            s_pos_y <= v_res / 2;
+        elsif rising_edge(s_clk_27) then
+            v_x := to_integer(unsigned(s_enc_left_val));
+            v_y := to_integer(unsigned(s_enc_right_val));
+
+            if v_x < h_res then
+                s_pos_x <= v_x;
+            end if;
+
+            if v_y < v_res then
+                s_pos_y <= v_y;
+            end if;
+        end if;
+    end process;
+
+    -- Affichage du pixel unique (Blanc si correspondance, Noir sinon)[cite: 2]
+    process(s_x_counter, s_y_counter, s_pos_x, s_pos_y)
+    begin
+        if (s_x_counter = s_pos_x) and (s_y_counter = s_pos_y) then
+            o_hdmi_tx_d <= x"FFFFFF"; -- Blanc[cite: 2]
+        else
+            o_hdmi_tx_d <= x"000000"; -- Noir[cite: 2]
+        end if;
+    end process;
 
 end architecture rtl;
