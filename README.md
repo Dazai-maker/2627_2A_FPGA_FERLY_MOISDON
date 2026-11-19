@@ -1,8 +1,8 @@
 # 2627_2A_FPGA_FERLY_MOISDON
 
 
-**Faire clignoter une LED :
-**
+Faire clignoter une LED :
+
 FPGA_CLK1_50 est connectée sur le PIN_V11. 
 
 On fait le schéma du code :
