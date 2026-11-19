@@ -39,5 +39,10 @@ Effacement :
 Question 1 : Dans le FPGA, la mémoire dpRAM interne (Block RAM) ne dispose pas d'entrée de remise à zéro globale permettant d'effacer toutes les données instantanément. Pour vider l'écran, il faut donc que nous balayons séquentiellement l'ensemble des $345\,600$ adresses ($720 \times 480$) afin d'y écrire la valeur 0x00 une par une.Notre solution consiste à ajouter un multiplexeur d'accès sur le Port A de la mémoire, piloté par un compteur d'effacement :En fonctionnement normal : Le Port A reçoit l'adresse correspondant aux coordonnées $(X, Y)$ issues des deux encodeurs ($\text{Adresse} = Y \times 720 + X$) et écrit 0x01 pour mémoriser le passage du pixel.Lors de l'appui sur le bouton (i_left_pb) : Le système bascule alors en mode effacement ; le compteur parcourt automatiquement toutes les adresses de 0 à 345599 au rythme de l'horloge à 50 MHz en écrivant 0x00 à chaque cycle, puis redonne la main aux encodeurs une fois le balayage terminé.
 
 
+Voilà nous avons réussi à faire l'écran magique, avec une logique d'effacement.
+<img width="1500" height="2000" alt="WhatsApp Image 2026-11-19 at 11 22 47" src="https://github.com/user-attachments/assets/b7f3c71d-9bce-40b6-be14-04ef43ba82ac" />
+
+
+
 
 
