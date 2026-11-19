@@ -80,7 +80,6 @@ begin
         end if;
     end process;
 
-    -- Une seule LED allumée à la fois
     process(s_led_idx, rst)
         variable v_leds : std_logic_vector(9 downto 0);
     begin
