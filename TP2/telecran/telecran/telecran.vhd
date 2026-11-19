@@ -7,10 +7,10 @@ use pll.all;
 
 entity telecran is
     port (
-        -- FPGA
+        -- horloge carte
         i_clk_50 : in std_logic;
 
-        -- HDMI
+        -- signaux hdmi
         io_hdmi_i2c_scl : inout std_logic;
         io_hdmi_i2c_sda : inout std_logic;
         o_hdmi_tx_clk   : out std_logic;
@@ -20,14 +20,14 @@ entity telecran is
         i_hdmi_tx_int   : in std_logic;
         o_hdmi_tx_vs    : out std_logic;
 
-        -- KEYs
+        -- reset actif bas
         i_rst_n : in std_logic;
 
-        -- LEDs
+        -- leds
         o_leds      : out std_logic_vector(9 downto 0);
         o_de10_leds : out std_logic_vector(7 downto 0);
 
-        -- Coder
+        -- encodeurs et boutons
         i_left_ch_a  : in std_logic;
         i_left_ch_b  : in std_logic;
         i_left_pb    : in std_logic;
@@ -39,6 +39,7 @@ end entity telecran;
 
 architecture rtl of telecran is
 
+    -- composant chenillard
     component Chenillard_Encodeur
         port (
             CLK  : in  std_logic;
@@ -50,6 +51,7 @@ architecture rtl of telecran is
         );
     end component;
 
+    -- composant encodeur rotatif
     component encodeur
         generic (
             N : integer := 10
@@ -64,6 +66,7 @@ architecture rtl of telecran is
         );
     end component;
 
+    -- config i2c hdmi
     component I2C_HDMI_Config
         port (
             iCLK        : in std_logic;
@@ -74,6 +77,7 @@ architecture rtl of telecran is
         );
     end component;
 
+    -- pll 27 mhz
     component pll
         port (
             refclk   : in std_logic;
@@ -83,6 +87,7 @@ architecture rtl of telecran is
         );
     end component;
 
+    -- controleur video hdmi
     component hdmi_controler
         generic (
             h_res  : positive := 720;
@@ -107,6 +112,7 @@ architecture rtl of telecran is
         );
     end component;
 
+    -- memoire dual-port framebuffer
     component dpram
         generic (
             mem_size   : natural := 720 * 480;
@@ -126,42 +132,48 @@ architecture rtl of telecran is
         );
     end component;
 
+    -- resolution et taille memoire
     constant h_res    : natural := 720;
     constant v_res    : natural := 480;
     constant mem_size : natural := h_res * v_res;
 
+    -- horloges et reset interne
     signal s_clk_27  : std_logic;
     signal s_rst_n   : std_logic;
     signal s_hdmi_de : std_logic;
 
+    -- coordonnees et adresse hdmi
     signal s_x_counter     : natural range 0 to (h_res - 1);
     signal s_y_counter     : natural range 0 to (v_res - 1);
     signal s_pixel_address : natural range 0 to (mem_size - 1);
 
-    -- Compteur anti-rebond 1 ms integre
+    -- tick 1 ms pour echantillonnage
     signal s_cpt_1ms  : integer range 0 to 49999 := 0;
     signal s_tick_1ms : std_logic := '0';
 
+    -- valeurs des encodeurs
     signal s_enc_left_val  : std_logic_vector(9 downto 0);
     signal s_enc_right_val : std_logic_vector(9 downto 0);
 
+    -- position du curseur
     signal s_pos_x : natural range 0 to (h_res - 1) := 0;
     signal s_pos_y : natural range 0 to (v_res - 1) := 0;
 
-    -- Signaux DPRAM
+    -- signaux d'acces dpram
     signal s_addr_cursor : natural range 0 to (mem_size - 1);
     signal s_ram_addr_a  : natural range 0 to (mem_size - 1);
     signal s_ram_data_a  : std_logic_vector(7 downto 0);
     signal s_ram_q_b     : std_logic_vector(7 downto 0);
 
-    -- Signaux d'effacement
+    -- effacement de l'ecran
     signal s_clear_active : std_logic := '0';
     signal s_clear_addr   : natural range 0 to (mem_size - 1) := 0;
 
 begin
+    -- leds de10 non utilisees
     o_de10_leds <= (others => '0');
 
-    -- PLL 27 MHz
+    -- generation 27 mhz
     pll0 : component pll
         port map (
             refclk   => i_clk_50,
@@ -170,7 +182,7 @@ begin
             locked   => s_rst_n
         );
 
-    -- Configuration I2C HDMI
+    -- initialisation hdmi en i2c
     I2C_HDMI_Config0 : component I2C_HDMI_Config
         port map (
             iCLK        => i_clk_50,
@@ -180,10 +192,11 @@ begin
             HDMI_TX_INT => i_hdmi_tx_int
         );
 
+    -- horloge et enable video hdmi
     o_hdmi_tx_clk <= s_clk_27;
     o_hdmi_tx_de  <= s_hdmi_de;
 
-    -- Controleur HDMI
+    -- synchro et compteurs hdmi
     hdmi_controler0 : component hdmi_controler
         port map (
             i_clk           => s_clk_27,
@@ -197,7 +210,7 @@ begin
             o_y_counter     => s_y_counter
         );
 
-    -- Generation du tick 1 ms pour l'anti-rebond
+    -- impulsion toutes les 1 ms sur 50 mhz
     process(i_clk_50, i_rst_n)
     begin
         if i_rst_n = '0' then
@@ -214,7 +227,7 @@ begin
         end if;
     end process;
 
-    -- Instanciation de ton Chenillard_Encodeur sur les LEDs rouges
+    -- chenillard lie a l'encodeur gauche
     chenillard0 : component Chenillard_Encodeur
         port map (
             CLK  => i_clk_50,
@@ -225,7 +238,7 @@ begin
             LEDS => o_leds
         );
 
-    -- Encodeur gauche (horizontal X)
+    -- lecture encodeur gauche (x)
     enc_left : component encodeur
         generic map (
             N => 10
@@ -239,7 +252,7 @@ begin
             val => s_enc_left_val
         );
 
-    -- Encodeur droit (vertical Y)
+    -- lecture encodeur droit (y)
     enc_right : component encodeur
         generic map (
             N => 10
@@ -253,7 +266,7 @@ begin
             val => s_enc_right_val
         );
 
-    -- Position (X, Y) issue des encodeurs, bornee aux dimensions de l'ecran
+    -- bornage de (s_pos_x, s_pos_y) dans l'ecran
     process(i_clk_50, i_rst_n)
         variable v_x, v_y : integer;
     begin
@@ -278,10 +291,10 @@ begin
         end if;
     end process;
 
-    -- Calcul de l'adresse lineaire du pixel courant
+    -- adresse memoire du curseur
     s_addr_cursor <= (s_pos_y * h_res) + s_pos_x;
 
-    -- Machine d'effacement de la RAM sur appui de i_left_pb
+    -- balayage d'effacement sur appui de i_left_pb
     process(i_clk_50, i_rst_n)
     begin
         if (i_rst_n = '0') then
@@ -304,11 +317,11 @@ begin
         end if;
     end process;
 
-    -- Multiplexage Port A (ecriture pixel vs effacement complet)
+    -- choix adresse et donnee d'ecriture port a
     s_ram_addr_a <= s_clear_addr  when s_clear_active = '1' else s_addr_cursor;
     s_ram_data_a <= x"00"         when s_clear_active = '1' else x"01";
 
-    -- Memoire Dual-Port (Framebuffer)
+    -- ecriture port a (curseur/effacement) et lecture port b (hdmi)
     dpram0 : component dpram
         generic map (
             mem_size   => mem_size,
@@ -327,7 +340,7 @@ begin
             o_q_b    => s_ram_q_b
         );
 
-    -- Affichage video (lecture Port B + curseur rouge)
+    -- sortie rgb selon curseur, trace memorisee ou fond
     process(s_clk_27, s_rst_n)
     begin
         if (s_rst_n = '0') then
@@ -335,11 +348,11 @@ begin
         elsif rising_edge(s_clk_27) then
             if s_hdmi_de = '1' then
                 if (s_x_counter = s_pos_x) and (s_y_counter = s_pos_y) then
-                    o_hdmi_tx_d <= x"FF0000"; -- Pixel courant en rouge
+                    o_hdmi_tx_d <= x"FF0000";
                 elsif s_ram_q_b = x"01" then
-                    o_hdmi_tx_d <= x"FFFFFF"; -- Trace memorise en blanc
+                    o_hdmi_tx_d <= x"FFFFFF";
                 else
-                    o_hdmi_tx_d <= x"000000"; -- Fond noir
+                    o_hdmi_tx_d <= x"000000";
                 end if;
             else
                 o_hdmi_tx_d <= x"000000";
