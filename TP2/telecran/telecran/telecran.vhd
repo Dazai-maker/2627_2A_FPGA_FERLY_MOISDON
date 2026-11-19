@@ -191,11 +191,12 @@ begin
         end if;
     end process;
 
-    -- Affichage du pixel unique 
+-- Affichage d'un carré de 16x16 pixels (test)
     process(s_x_counter, s_y_counter, s_pos_x, s_pos_y)
-	 constant  ¨P_SIZE : integer := 16; -- Taille du pixel
+        constant P_SIZE : integer := 16; -- Taille pixel
     begin
-        if (s_x_counter = s_pos_x) and (s_y_counter = s_pos_y) then
+        if (s_x_counter >= s_pos_x) and (s_x_counter < s_pos_x + P_SIZE) and
+           (s_y_counter >= s_pos_y) and (s_y_counter < s_pos_y + P_SIZE) then
             o_hdmi_tx_d <= x"FFFFFF"; -- blanc
         else
             o_hdmi_tx_d <= x"000000"; -- noir
