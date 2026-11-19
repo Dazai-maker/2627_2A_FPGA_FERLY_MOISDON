@@ -228,7 +228,7 @@ begin
     begin
         if (s_x_counter >= s_pos_x) and (s_x_counter < s_pos_x + C_SIZE) and
            (s_y_counter >= s_pos_y) and (s_y_counter < s_pos_y + C_SIZE) then
-            o_hdmi_tx_d <= x"FFFFFF"; -- Blanc[cite: 2]
+            o_hdmi_tx_d <= x"FFFFFF"; -- Blanc
         else
             o_hdmi_tx_d <= x"000000"; -- Noir
         end if;
