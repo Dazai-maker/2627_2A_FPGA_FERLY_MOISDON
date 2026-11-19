@@ -39,6 +39,17 @@ end entity telecran;
 
 architecture rtl of telecran is
 
+    component Chenillard_Encodeur
+        port (
+            CLK  : in  std_logic;
+            rst  : in  std_logic;
+            ena  : in  std_logic;
+            A    : in  std_logic;
+            B    : in  std_logic;
+            LEDS : out std_logic_vector(9 downto 0)
+        );
+    end component;
+
     component encodeur
         generic (
             N : integer := 10
@@ -50,14 +61,6 @@ architecture rtl of telecran is
             rst : in  std_logic;
             ena : in  std_logic;
             val : out std_logic_vector(N-1 downto 0)
-        );
-    end component;
-
-    component diviseur_1ms
-        port (
-            clk   : in  std_logic;
-            rst_n : in  std_logic;
-            tick  : out std_logic
         );
     end component;
 
@@ -135,7 +138,10 @@ architecture rtl of telecran is
     signal s_y_counter     : natural range 0 to (v_res - 1);
     signal s_pixel_address : natural range 0 to (mem_size - 1);
 
-    signal s_tick_1ms      : std_logic;
+    -- Compteur anti-rebond 1 ms integre
+    signal s_cpt_1ms  : integer range 0 to 49999 := 0;
+    signal s_tick_1ms : std_logic := '0';
+
     signal s_enc_left_val  : std_logic_vector(9 downto 0);
     signal s_enc_right_val : std_logic_vector(9 downto 0);
 
@@ -153,7 +159,6 @@ architecture rtl of telecran is
     signal s_clear_addr   : natural range 0 to (mem_size - 1) := 0;
 
 begin
-    o_leds      <= (others => '0');
     o_de10_leds <= (others => '0');
 
     -- PLL 27 MHz
@@ -192,12 +197,32 @@ begin
             o_y_counter     => s_y_counter
         );
 
-    -- Diviseur 1 ms (anti-rebond)
-    diviseur0 : component diviseur_1ms
+    -- Generation du tick 1 ms pour l'anti-rebond
+    process(i_clk_50, i_rst_n)
+    begin
+        if i_rst_n = '0' then
+            s_cpt_1ms  <= 0;
+            s_tick_1ms <= '0';
+        elsif rising_edge(i_clk_50) then
+            if s_cpt_1ms = 49999 then
+                s_cpt_1ms  <= 0;
+                s_tick_1ms <= '1';
+            else
+                s_cpt_1ms  <= s_cpt_1ms + 1;
+                s_tick_1ms <= '0';
+            end if;
+        end if;
+    end process;
+
+    -- Instanciation de ton Chenillard_Encodeur sur les LEDs rouges
+    chenillard0 : component Chenillard_Encodeur
         port map (
-            clk   => i_clk_50,
-            rst_n => i_rst_n,
-            tick  => s_tick_1ms
+            CLK  => i_clk_50,
+            rst  => i_rst_n,
+            ena  => s_tick_1ms,
+            A    => i_left_ch_a,
+            B    => i_left_ch_b,
+            LEDS => o_leds
         );
 
     -- Encodeur gauche (horizontal X)
