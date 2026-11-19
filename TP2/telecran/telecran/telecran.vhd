@@ -224,7 +224,6 @@ begin
         end if;
     end process;
 
-    -- Sortie pixel synchrone et masquée hors zone active (o_hdmi_tx_de)
     process(s_clk_27, s_rst_n)
     begin
         if (s_rst_n = '0') then
