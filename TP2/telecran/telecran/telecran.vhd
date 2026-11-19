@@ -99,20 +99,18 @@ architecture rtl of telecran is
     constant h_res  : natural := 720;
     constant v_res  : natural := 480;
     constant C_SIZE : integer := 16; -- Taille du carré en pixels
-    constant C_STEP : integer := 2;  -- Pas de déplacement par cran d'encodeur
+    constant C_STEP : integer := 2;  -- Pas de déplacement par cran
 
     signal s_clk_27 : std_logic;
     signal s_rst_n  : std_logic;
 
-    -- Compteurs x et y issus du contrôleur HDMI
     signal s_x_counter : natural range 0 to (h_res - 1);
     signal s_y_counter : natural range 0 to (v_res - 1);
 
-    -- Signaux de sortie des encodeurs sur 10 bits
     signal s_enc_left_val  : std_logic_vector(9 downto 0);
     signal s_enc_right_val : std_logic_vector(9 downto 0);
 
-    -- Positions x et y du carré à l'écran
+    -- Position verrouillée pendant toute la trame active
     signal s_pos_x : natural range 0 to (h_res - 1) := (h_res / 2) - (C_SIZE / 2);
     signal s_pos_y : natural range 0 to (v_res - 1) := (v_res / 2) - (C_SIZE / 2);
 
@@ -183,7 +181,7 @@ begin
             val => s_enc_right_val
         );
 
-    -- Mise à jour de la position (s_pos_x, s_pos_y) à partir des encodeurs
+    -- Mise à jour de (s_pos_x, s_pos_y) uniquement en fin de trame active (évite les doubles positions sur une même image)
     process(s_clk_27, s_rst_n)
         variable v_raw_x, v_raw_y   : integer;
         variable v_calc_x, v_calc_y : integer;
@@ -192,45 +190,53 @@ begin
             s_pos_x <= (h_res / 2) - (C_SIZE / 2);
             s_pos_y <= (v_res / 2) - (C_SIZE / 2);
         elsif rising_edge(s_clk_27) then
-            v_raw_x := to_integer(unsigned(s_enc_left_val));
-            v_raw_y := to_integer(unsigned(s_enc_right_val));
+            if (s_x_counter = h_res - 1) and (s_y_counter = v_res - 1) then
+                v_raw_x := to_integer(unsigned(s_enc_left_val));
+                v_raw_y := to_integer(unsigned(s_enc_right_val));
 
-            if v_raw_x >= 512 then
-                v_raw_x := v_raw_x - 1024;
-            end if;
+                if v_raw_x >= 512 then
+                    v_raw_x := v_raw_x - 1024;
+                end if;
 
-            if v_raw_y >= 512 then
-                v_raw_y := v_raw_y - 1024;
-            end if;
+                if v_raw_y >= 512 then
+                    v_raw_y := v_raw_y - 1024;
+                end if;
 
-            v_calc_x := ((h_res / 2) - (C_SIZE / 2)) + (v_raw_x * C_STEP);
-            v_calc_y := ((v_res / 2) - (C_SIZE / 2)) + (v_raw_y * C_STEP);
+                v_calc_x := ((h_res / 2) - (C_SIZE / 2)) + (v_raw_x * C_STEP);
+                v_calc_y := ((v_res / 2) - (C_SIZE / 2)) + (v_raw_y * C_STEP);
 
-            if v_calc_x < 0 then
-                s_pos_x <= 0;
-            elsif v_calc_x > integer(h_res) - C_SIZE then
-                s_pos_x <= integer(h_res) - C_SIZE;
-            else
-                s_pos_x <= v_calc_x;
-            end if;
+                if v_calc_x < 0 then
+                    s_pos_x <= 0;
+                elsif v_calc_x > integer(h_res) - C_SIZE then
+                    s_pos_x <= integer(h_res) - C_SIZE;
+                else
+                    s_pos_x <= v_calc_x;
+                end if;
 
-            if v_calc_y < 0 then
-                s_pos_y <= 0;
-            elsif v_calc_y > integer(v_res) - C_SIZE then
-                s_pos_y <= integer(v_res) - C_SIZE;
-            else
-                s_pos_y <= v_calc_y;
+                if v_calc_y < 0 then
+                    s_pos_y <= 0;
+                elsif v_calc_y > integer(v_res) - C_SIZE then
+                    s_pos_y <= integer(v_res) - C_SIZE;
+                else
+                    s_pos_y <= v_calc_y;
+                end if;
             end if;
         end if;
     end process;
 
-    process(s_x_counter, s_y_counter, s_pos_x, s_pos_y)
+    -- Sortie pixel synchrone et masquée hors zone active (o_hdmi_tx_de)
+    process(s_clk_27, s_rst_n)
     begin
-        if (s_x_counter >= s_pos_x) and (s_x_counter < s_pos_x + C_SIZE) and
-           (s_y_counter >= s_pos_y) and (s_y_counter < s_pos_y + C_SIZE) then
-            o_hdmi_tx_d <= x"FFFFFF"; -- Blanc
-        else
-            o_hdmi_tx_d <= x"000000"; -- Noir
+        if (s_rst_n = '0') then
+            o_hdmi_tx_d <= x"000000";
+        elsif rising_edge(s_clk_27) then
+            if (o_hdmi_tx_de = '1') and
+               (s_x_counter >= s_pos_x) and (s_x_counter < s_pos_x + C_SIZE) and
+               (s_y_counter >= s_pos_y) and (s_y_counter < s_pos_y + C_SIZE) then
+                o_hdmi_tx_d <= x"FFFFFF";
+            else
+                o_hdmi_tx_d <= x"000000";
+            end if;
         end if;
     end process;
 
