@@ -4,11 +4,11 @@ use ieee.numeric_std.all;
 
 entity hdmi_controler is
     generic (
-        -- Résolution
+        -- resolution active
         h_res     : positive := 720;
         v_res     : positive := 480;
 
-        -- Valeurs magiques des timings (480p)
+        -- timings 480p
         h_sync    : positive := 61;
         h_fp      : positive := 58;
         h_bp      : positive := 18;
@@ -33,25 +33,30 @@ entity hdmi_controler is
 end hdmi_controler;
 
 architecture rtl of hdmi_controler is
-    constant h_start: positive := h_sync + h_fp;        -- 119
-    constant h_end  : positive := h_res + h_start;      -- 839
-    constant h_total: positive := h_end + h_bp;         -- 857
+    -- bornes horizontales
+    constant h_start: positive := h_sync + h_fp;
+    constant h_end  : positive := h_res + h_start;
+    constant h_total: positive := h_end + h_bp;
 
-    constant v_start: positive := v_sync + v_fp;        -- 35
-    constant v_end  : positive := v_res + v_start;      -- 515
-    constant v_total: positive := v_end + v_bp;         -- 524
+    -- bornes verticales
+    constant v_start: positive := v_sync + v_fp;
+    constant v_end  : positive := v_res + v_start;
+    constant v_total: positive := v_end + v_bp;
 
+    -- compteurs de ligne et de trame
     signal r_h_count : natural range 0 to h_total := 0;
     signal r_v_count : natural range 0 to v_total := 0;
 
+    -- zones actives h et v
     signal r_h_active: std_logic := '0';
     signal r_v_active: std_logic := '0';
 
+    -- coordonnees pixel
     signal r_x_counter : natural range 0 to (h_res - 1) := 0;
     signal r_y_counter : natural range 0 to (v_res - 1) := 0;
 begin
 
-    -- Signaux de contrôle horizontal et compteur X
+    -- synchro horizontale et compteur x
     process(i_clk, i_rst_n)
     begin
         if (i_rst_n = '0') then
@@ -60,18 +65,21 @@ begin
             r_h_active  <= '0';
             r_x_counter <= 0;
         elsif rising_edge(i_clk) then
+            -- compteur horizontal
             if (r_h_count = h_total) then
                 r_h_count <= 0;
             else
                 r_h_count <= r_h_count + 1;
             end if;
 
+            -- impulsion hsync
             if ((r_h_count >= h_sync) and (r_h_count /= h_total)) then
                 o_hdmi_hs <= '1';
             else
                 o_hdmi_hs <= '0';
             end if;
 
+            -- zone active et x
             if (r_h_count = h_start) then
                 r_h_active  <= '1';
                 r_x_counter <= 0;
@@ -85,7 +93,7 @@ begin
         end if;
     end process;
 
-    -- Signaux de contrôle vertical et compteur Y
+    -- synchro verticale et compteur y
     process(i_clk, i_rst_n)
     begin
         if (i_rst_n = '0') then
@@ -94,7 +102,7 @@ begin
             r_v_active  <= '0';
             r_y_counter <= 0;
         elsif rising_edge(i_clk) then
-            -- Incrémenter le compteur vertical une fois par ligne
+            -- mise a jour en fin de ligne
             if (r_h_count = h_total) then
                 if (r_v_count = v_total) then
                     r_v_count <= 0;
@@ -102,12 +110,14 @@ begin
                     r_v_count <= r_v_count + 1;
                 end if;
 
+                -- impulsion vsync
                 if ((r_v_count >= v_sync) and (r_v_count /= v_total)) then
                     o_hdmi_vs <= '1';
                 else
                     o_hdmi_vs <= '0';
                 end if;
 
+                -- zone active et y
                 if (r_v_count = v_start) then
                     r_v_active  <= '1';
                     r_y_counter <= 0;
@@ -122,7 +132,7 @@ begin
         end if;
     end process;
 
-	-- Assignations des sorties
+    -- sorties video et adresse memoire
     o_hdmi_de       <= r_h_active and r_v_active;
     o_pixel_en      <= r_h_active and r_v_active;
     o_x_counter     <= r_x_counter;
