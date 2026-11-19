@@ -4,7 +4,7 @@ use ieee.numeric_std.all;
 
 entity Encodeur is 
     generic (
-        N : integer := 10 -- Paramètre de taille indispensable pour l'instanciation
+        N : integer := 10 
     );
     port (
         A   : in  std_logic;
