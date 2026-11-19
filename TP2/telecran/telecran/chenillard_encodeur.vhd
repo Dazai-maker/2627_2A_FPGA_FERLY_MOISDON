@@ -4,26 +4,28 @@ use ieee.numeric_std.all;
 
 entity Chenillard_Encodeur is
     port (
-        CLK     : in  std_logic;
-        rst     : in  std_logic;
-        ena     : in  std_logic;
-        A       : in  std_logic;
-        B       : in  std_logic;
-        LEDS    : out std_logic_vector(9 downto 0)
+        CLK  : in  std_logic;
+        rst  : in  std_logic;
+        ena  : in  std_logic;
+        A    : in  std_logic;
+        B    : in  std_logic;
+        LEDS : out std_logic_vector(9 downto 0)
     );
 end entity Chenillard_Encodeur;
 
 architecture rtl of Chenillard_Encodeur is
 
-    -- Composant Encodeur
     component Encodeur is
+        generic (
+            N : integer := 10
+        );
         port (
             A   : in  std_logic;
             B   : in  std_logic;
             CLK : in  std_logic;
             rst : in  std_logic;
             ena : in  std_logic;
-            val : out std_logic_vector(9 downto 0)
+            val : out std_logic_vector(N-1 downto 0)
         );
     end component;
 
@@ -31,8 +33,10 @@ architecture rtl of Chenillard_Encodeur is
 
 begin
 
-    -- Instanciation du bloc encodeur
     inst_encodeur : Encodeur
+        generic map (
+            N => 10
+        )
         port map (
             A   => A,
             B   => B,
@@ -42,19 +46,21 @@ begin
             val => s_val
         );
 
-    -- Gestion du chenillard en fonction de la valeur du compteur
     process(CLK, rst)
+        variable v_raw   : integer;
         variable v_index : integer range 0 to 9;
     begin
         if rst = '0' then
             LEDS <= (others => '0');
         elsif rising_edge(CLK) then
             if ena = '1' then
-                -- Récupération des 4 bits de poids faible pour déterminer la LED active (0 à 9)
-                v_index := to_integer(unsigned(s_val)) mod 10;
-                
-                -- Décalage du bit à 1 pour faire le chenillard
-                LEDS <= (others => '0');
+                v_raw := to_integer(unsigned(s_val));
+
+                -- Gestion propre du wrap-around sur 10 bits pour un cycle modulo 10 continu
+                -- (1024 est un multiple de 10 plus 4 : on ajuste pour garder un défilement continu)
+                v_index := v_raw mod 10;
+
+                LEDS          <= (others => '0');
                 LEDS(v_index) <= '1';
             end if;
         end if;
