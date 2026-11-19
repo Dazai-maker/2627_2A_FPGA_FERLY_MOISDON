@@ -35,6 +35,9 @@ Question 1 : Une mémoire dual-port, c'est une mémoire qui autorise simultaném
 Question 2 : Voici le schéma demandé : 
 <img width="1080" height="792" alt="WhatsApp Image 2026-11-19 at 09 47 04" src="https://github.com/user-attachments/assets/c35616e6-ed54-4288-a8b4-8b17461d6210" />
 
+Effacement : 
+Question 1 : Dans un FPGA, une mémoire RAM interne (Block RAM) ne dispose pas d'entrée de remise à zéro globale permettant d'effacer toutes ses données instantanément. Pour vider l'écran, il faut donc balayer séquentiellement l'ensemble des $345\,600$ adresses ($720 \times 480$) afin d'y écrire la valeur 0x00 une par une.La solution consiste à ajouter un multiplexeur d'accès sur le Port A de la mémoire, piloté par un compteur d'effacement :En fonctionnement normal : Le Port A reçoit l'adresse correspondant aux coordonnées $(X, Y)$ issues des deux encodeurs ($\text{Adresse} = Y \times 720 + X$) et écrit 0x01 pour mémoriser le passage du pixel.Lors de l'appui sur le bouton (i_left_pb) : Le système bascule en mode effacement ; le compteur parcourt automatiquement toutes les adresses de 0 à 345599 au rythme de l'horloge à 50 MHz en écrivant 0x00 à chaque cycle, puis redonne la main aux encodeurs une fois le balayage terminé (en environ $6{,}9\text{ ms}$).
+
 
 
 
