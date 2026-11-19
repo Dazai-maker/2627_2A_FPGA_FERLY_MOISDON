@@ -30,8 +30,9 @@ Question 2 :
 Afin de détecter un front montant ( ou descendant ), nous allons utiliser des bascules D. Pour cela nous en plaçons deux à la suite. Puis nous prenons deux signaux, un qui correspond à l’état actuel (t), le signal A_ACT, et un autre qui correspond à l’état précédent ( t-1), le signal A_PREC. Ensuite, pour détecter les fronts montant il suffira de remarquer que le signal A_PREC vaut 1 alors que le signal A_ACT vaut 0. Et inversement pour le front descendant.
 
 Mémorisation : 
-Une mémoire dual-port, c'est une mémoire qui autorise simultanément l'accès à deux interfaces, en l'occurence ici nous avons le port A, ainsi le port B qui sont complètement distinct.
+Question 1 : Une mémoire dual-port, c'est une mémoire qui autorise simultanément l'accès à deux interfaces, en l'occurence ici nous avons le port A, ainsi le port B qui sont complètement distinct.
 
+Question 2 : Voici le schéma demandé : 
 <img width="1080" height="792" alt="WhatsApp Image 2026-11-19 at 09 47 04" src="https://github.com/user-attachments/assets/c35616e6-ed54-4288-a8b4-8b17461d6210" />
 
 
