@@ -40,13 +40,17 @@ end entity telecran;
 architecture rtl of telecran is
 
     
-    component encodeur
+component encodeur
+        generic (
+            N : integer := 10
+        );
         port (
-            A   : in std_logic;
-            B   : in std_logic;
-            CLK : in std_logic;
-            rst : in std_logic;
-            val : out std_logic_vector(9 downto 0)
+            A   : in  std_logic;
+            B   : in  std_logic;
+            CLK : in  std_logic;
+            rst : in  std_logic;
+            ena : in  std_logic;
+            val : out std_logic_vector(N-1 downto 0)
         );
     end component;
 
