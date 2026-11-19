@@ -32,7 +32,8 @@ Afin de détecter un front montant ( ou descendant ), nous allons utiliser des b
 Mémorisation : 
 Une mémoire dual-port, c'est une mémoire qui autorise simultanément l'accès à deux interfaces, en l'occurence ici nous avons le port A, ainsi le port B qui sont complètement distinct.
 
-<img width="1500" height="2000" alt="WhatsApp Image 2026-11-19 at 09 42 35" src="https://github.com/user-attachments/assets/6be50425-f31a-4062-ba84-a2f213324512" />
+<img width="1080" height="792" alt="WhatsApp Image 2026-11-19 at 09 47 04" src="https://github.com/user-attachments/assets/c35616e6-ed54-4288-a8b4-8b17461d6210" />
+
 
 
 
