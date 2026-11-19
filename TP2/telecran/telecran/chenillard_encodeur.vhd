@@ -56,8 +56,6 @@ begin
             if ena = '1' then
                 v_raw := to_integer(unsigned(s_val));
 
-                -- Gestion propre du wrap-around sur 10 bits pour un cycle modulo 10 continu
-                -- (1024 est un multiple de 10 plus 4 : on ajuste pour garder un défilement continu)
                 v_index := v_raw mod 10;
 
                 LEDS          <= (others => '0');
