@@ -224,7 +224,6 @@ begin
         end if;
     end process;
 
-    -- Assignation directe des pixels (sans synchronisation ni masquage DE)
     process(s_x_counter, s_y_counter, s_pos_x, s_pos_y)
     begin
         if (s_x_counter >= s_pos_x) and (s_x_counter < s_pos_x + C_SIZE) and
