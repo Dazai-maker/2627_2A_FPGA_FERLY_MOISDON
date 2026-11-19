@@ -204,6 +204,7 @@ begin
             val => s_enc_right_val
         );
 
+    -- Mise a jour de (s_pos_x, s_pos_y) en fin de trame active
     process(s_clk_27, s_rst_n)
         variable v_raw_x, v_raw_y   : integer;
         variable v_calc_x, v_calc_y : integer;
@@ -246,7 +247,7 @@ begin
         end if;
     end process;
 
-    -- Generation synchrone des pixels (masquee hors zone active DE)
+    -- Generation synchrone des pixels 
     process(s_clk_27, s_rst_n)
     begin
         if (s_rst_n = '0') then
