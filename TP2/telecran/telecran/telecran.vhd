@@ -96,30 +96,24 @@ architecture rtl of telecran is
         );
     end component;
 
-    constant h_res     : natural := 720;
-    constant v_res     : natural := 480;
-    constant C_SIZE    : integer := 16;    -- Taille du carre en pixels
-    constant C_STEP    : integer := 2;     -- Pas de deplacement par cran
-    constant C_ENC_DIV : integer := 27000; -- 27 MHz / 27000 = 1 kHz d'echantillonnage encodeur
+    constant h_res : natural := 720;
+    constant v_res : natural := 480;
 
     signal s_clk_27 : std_logic;
     signal s_rst_n  : std_logic;
+    signal s_hdmi_de : std_logic;
 
-    signal s_enc_cnt : integer range 0 to C_ENC_DIV - 1 := 0;
-    signal s_enc_ena : std_logic := '0';
-
-    signal s_hdmi_de   : std_logic;
     signal s_x_counter : natural range 0 to (h_res - 1);
     signal s_y_counter : natural range 0 to (v_res - 1);
 
     signal s_enc_left_val  : std_logic_vector(9 downto 0);
     signal s_enc_right_val : std_logic_vector(9 downto 0);
 
-    signal s_pos_x : natural range 0 to (h_res - 1) := (h_res / 2) - (C_SIZE / 2);
-    signal s_pos_y : natural range 0 to (v_res - 1) := (v_res / 2) - (C_SIZE / 2);
+    signal s_pos_x : natural range 0 to (h_res - 1) := 0;
+    signal s_pos_y : natural range 0 to (v_res - 1) := 0;
 
 begin
-    o_leds      <= s_enc_left_val;
+    o_leds      <= (others => '0');
     o_de10_leds <= (others => '0');
 
     -- PLL 27 MHz
@@ -142,6 +136,7 @@ begin
         );
 
     o_hdmi_tx_clk <= s_clk_27;
+    o_hdmi_tx_de  <= s_hdmi_de;
 
     -- Controleur HDMI
     hdmi_controler0 : component hdmi_controler
@@ -157,26 +152,7 @@ begin
             o_y_counter     => s_y_counter
         );
 
-    o_hdmi_tx_de <= s_hdmi_de;
-
-    -- Generateur d'impulsion d'echantillonnage (reduit la frequence vue par les encodeurs)
-    process(s_clk_27, s_rst_n)
-    begin
-        if (s_rst_n = '0') then
-            s_enc_cnt <= 0;
-            s_enc_ena <= '0';
-        elsif rising_edge(s_clk_27) then
-            if s_enc_cnt = C_ENC_DIV - 1 then
-                s_enc_cnt <= 0;
-                s_enc_ena <= '1';
-            else
-                s_enc_cnt <= s_enc_cnt + 1;
-                s_enc_ena <= '0';
-            end if;
-        end if;
-    end process;
-
-    -- Encodeur gauche (horizontal)
+    -- Encodeur gauche (horizontal X)
     enc_left : component encodeur
         generic map (
             N => 10
@@ -186,11 +162,11 @@ begin
             B   => i_left_ch_b,
             CLK => s_clk_27,
             rst => s_rst_n,
-            ena => s_enc_ena,
+            ena => '1',
             val => s_enc_left_val
         );
 
-    -- Encodeur droit (vertical)
+    -- Encodeur droit (vertical Y)
     enc_right : component encodeur
         generic map (
             N => 10
@@ -200,62 +176,38 @@ begin
             B   => i_right_ch_b,
             CLK => s_clk_27,
             rst => s_rst_n,
-            ena => s_enc_ena,
+            ena => '1',
             val => s_enc_right_val
         );
 
-    -- Mise a jour de (s_pos_x, s_pos_y) en fin de trame active
+    -- Position (X, Y) issue des encodeurs, bornee aux dimensions de l'ecran
     process(s_clk_27, s_rst_n)
-        variable v_raw_x, v_raw_y   : integer;
-        variable v_calc_x, v_calc_y : integer;
+        variable v_x, v_y : integer;
     begin
         if (s_rst_n = '0') then
-            s_pos_x <= (h_res / 2) - (C_SIZE / 2);
-            s_pos_y <= (v_res / 2) - (C_SIZE / 2);
+            s_pos_x <= 0;
+            s_pos_y <= 0;
         elsif rising_edge(s_clk_27) then
-            if (s_x_counter = h_res - 1) and (s_y_counter = v_res - 1) then
-                v_raw_x := to_integer(unsigned(s_enc_left_val));
-                v_raw_y := to_integer(unsigned(s_enc_right_val));
+            v_x := to_integer(unsigned(s_enc_left_val));
+            v_y := to_integer(unsigned(s_enc_right_val));
 
-                if v_raw_x >= 512 then
-                    v_raw_x := v_raw_x - 1024;
-                end if;
+            if v_x < integer(h_res) then
+                s_pos_x <= v_x;
+            end if;
 
-                if v_raw_y >= 512 then
-                    v_raw_y := v_raw_y - 1024;
-                end if;
-
-                v_calc_x := ((h_res / 2) - (C_SIZE / 2)) + (v_raw_x * C_STEP);
-                v_calc_y := ((v_res / 2) - (C_SIZE / 2)) + (v_raw_y * C_STEP);
-
-                if v_calc_x < 0 then
-                    s_pos_x <= 0;
-                elsif v_calc_x > integer(h_res) - C_SIZE then
-                    s_pos_x <= integer(h_res) - C_SIZE;
-                else
-                    s_pos_x <= v_calc_x;
-                end if;
-
-                if v_calc_y < 0 then
-                    s_pos_y <= 0;
-                elsif v_calc_y > integer(v_res) - C_SIZE then
-                    s_pos_y <= integer(v_res) - C_SIZE;
-                else
-                    s_pos_y <= v_calc_y;
-                end if;
+            if v_y < integer(v_res) then
+                s_pos_y <= v_y;
             end if;
         end if;
     end process;
 
-    -- Generation synchrone des pixels 
+    -- Affichage d'un pixel unique blanc sur fond noir
     process(s_clk_27, s_rst_n)
     begin
         if (s_rst_n = '0') then
             o_hdmi_tx_d <= x"000000";
         elsif rising_edge(s_clk_27) then
-            if (s_hdmi_de = '1') and
-               (s_x_counter >= s_pos_x) and (s_x_counter < s_pos_x + C_SIZE) and
-               (s_y_counter >= s_pos_y) and (s_y_counter < s_pos_y + C_SIZE) then
+            if (s_hdmi_de = '1') and (s_x_counter = s_pos_x) and (s_y_counter = s_pos_y) then
                 o_hdmi_tx_d <= x"FFFFFF";
             else
                 o_hdmi_tx_d <= x"000000";
